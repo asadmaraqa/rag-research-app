@@ -11,5 +11,4 @@ langsmith
 faiss-cpu
 pypdf
 pymupdf
-duckduckgo-search
 ddgs
