@@ -15,15 +15,15 @@ class GeminiEmbeddings(Embeddings):
     def __init__(self):
         self.api_key = os.environ.get("GOOGLE_API_KEY", "")
         self.url = (
-            "https://generativelanguage.googleapis.com/v1/models/"
-            "text-embedding-004:embedContent"
+            "https://generativelanguage.googleapis.com/v1beta/models/"
+            "gemini-embedding-001:embedContent"
         )
 
     def _embed(self, text: str) -> list[float]:
         resp = requests.post(
             self.url,
             params={"key": self.api_key},
-            json={"model": "models/text-embedding-004", "content": {"parts": [{"text": text}]}},
+            json={"model": "models/gemini-embedding-001", "content": {"parts": [{"text": text}]}},
         )
         resp.raise_for_status()
         return resp.json()["embedding"]["values"]
