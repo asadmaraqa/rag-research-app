@@ -6,6 +6,7 @@ langchain-core
 langchain-community
 langchain-text-splitters
 langchain-google-genai==2.0.7
+fastembed
 langgraph
 langsmith
 faiss-cpu
