@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: rag-research
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: LANGSMITH_API_KEY
+        sync: false
+      - key: LANGSMITH_TRACING
+        value: "false"
+      - key: SECRET_KEY
+        sync: false
+      - key: APP_PASSWORD
+        sync: false
+      - key: PYTHON_VERSION
+        value: "3.11"

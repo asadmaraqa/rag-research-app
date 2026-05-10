@@ -1,0 +1,28 @@
+# Secrets
+.env
+
+# Vector store (rebuilt at runtime)
+faiss_store/
+
+# Uploaded files
+uploads/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# OS
+.DS_Store

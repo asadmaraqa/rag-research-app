@@ -1,0 +1,24 @@
+It sent the question to Gemini and asked it to guess — rag: yes or rag: no. Gemini has no idea what files you uploaded. It was making a decision based purely on the wording of the question. If you asked "what are the sales figures?" Gemini might say rag: no even if you had a sales report uploaded, because it simply doesn't know.
+
+The vector DB was never touched during routing. The orchestrator was blind.
+
+
+
+Yes, and this project is a perfect base for it. LLMOps is basically — how do you monitor, evaluate, and improve LLM apps in production.
+
+Here's what we can add that's actually useful to learn:
+
+1. LangSmith — observability (2 lines of code)
+Set two env vars and every LangGraph run automatically gets traced — you see every node, every LLM call, tokens used, latency, inputs/outputs. Industry standard tool.
+
+2. Latency tracking per node
+Time how long each node takes and return it in the trace. You'd see "rewrite_query took 1.2s, retrieve took 0.3s" — helps identify bottlenecks.
+
+3. Token + cost tracking
+Count tokens consumed per query and log it. Real LLMOps work is partly about controlling costs.
+
+4. User feedback loop
+Add thumbs up/down buttons in the UI after each answer. Store to a JSON file. Now you have a dataset of good/bad answers — the foundation of evaluation.
+
+5. RAGAs evaluation
+Industry standard library that scores 
