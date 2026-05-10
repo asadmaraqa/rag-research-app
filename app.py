@@ -141,6 +141,24 @@ def chat():
         return jsonify({"error": f"Pipeline error: {str(e)}", "sources": []}), 500
 
 
+@app.route("/eval", methods=["POST"])
+@login_required
+def run_eval():
+    """Trigger a LangSmith evaluation run and return aggregated scores."""
+    data = request.get_json() or {}
+    mode = data.get("mode", "traditional")
+    if mode not in ("traditional", "single", "multi", "react"):
+        return jsonify({"error": f"Unknown mode '{mode}'."}), 400
+
+    try:
+        from eval.run_evals import run_evaluation
+        summary = run_evaluation(mode)
+        return jsonify({"mode": mode, "results": summary})
+    except Exception as e:
+        print(f"[ERROR] Eval failed: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/clear", methods=["POST"])
 @login_required
 def clear_history():

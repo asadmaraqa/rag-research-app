@@ -10,7 +10,9 @@ services:
       - key: LANGSMITH_API_KEY
         sync: false
       - key: LANGSMITH_TRACING
-        value: "false"
+        value: "true"
+      - key: LANGCHAIN_PROJECT
+        value: "rag-research"
       - key: SECRET_KEY
         sync: false
       - key: APP_PASSWORD

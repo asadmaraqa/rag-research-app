@@ -181,6 +181,40 @@ def _make_target(mode: str):
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
+def run_evaluation(mode: str = "traditional") -> dict:
+    """Run the evaluation pipeline and return aggregated scores.
+
+    Returns a dict like:
+      {"correctness": {"avg": 0.8, "n": 5}, "faithfulness": {"avg": 0.9, "n": 5}}
+    """
+    client = Client()
+    dataset_name = ensure_dataset(client)
+    target = _make_target(mode)
+
+    results = evaluate(
+        target,
+        data=dataset_name,
+        evaluators=[correctness_evaluator, faithfulness_evaluator],
+        experiment_prefix=f"rag-{mode}",
+        metadata={"mode": mode},
+    )
+
+    scores: dict[str, list[float]] = {}
+    for r in results:
+        eval_results = r.get("evaluation_results", {})
+        for fb in eval_results.get("results", []):
+            if fb.score is not None:
+                scores.setdefault(fb.key, []).append(fb.score)
+
+    summary = {}
+    for metric, vals in scores.items():
+        summary[metric] = {"avg": round(sum(vals) / len(vals), 4), "n": len(vals)}
+
+    project = os.getenv("LANGCHAIN_PROJECT", "rag-research")
+    summary["langsmith_project"] = project
+    return summary
+
+
 def main():
     parser = argparse.ArgumentParser(description="Run LangSmith evals for RAG Research")
     parser.add_argument(
@@ -191,31 +225,14 @@ def main():
     )
     args = parser.parse_args()
 
-    client = Client()
-    dataset_name = ensure_dataset(client)
-    target = _make_target(args.mode)
-
-    print(f"\nRunning evaluation — mode={args.mode}, dataset={dataset_name}")
-    results = evaluate(
-        target,
-        data=dataset_name,
-        evaluators=[correctness_evaluator, faithfulness_evaluator],
-        experiment_prefix=f"rag-{args.mode}",
-        metadata={"mode": args.mode},
-    )
+    print(f"\nRunning evaluation — mode={args.mode}")
+    summary = run_evaluation(args.mode)
 
     print("\n── Results ─────────────────────────────────────────────")
-    scores: dict[str, list[float]] = {}
-    for r in results:
-        for fb in r.get("feedback", []):
-            scores.setdefault(fb.key, []).append(fb.score)
-
-    for metric, vals in scores.items():
-        avg = sum(vals) / len(vals) if vals else 0
-        print(f"  {metric:20s}  avg={avg:.2f}  ({len(vals)} examples)")
-
-    project = os.getenv("LANGCHAIN_PROJECT", "rag-research")
-    print(f"\nFull results in LangSmith project: {project}")
+    for metric, data in summary.items():
+        if isinstance(data, dict):
+            print(f"  {metric:20s}  avg={data['avg']:.2f}  ({data['n']} examples)")
+    print(f"\nFull results in LangSmith project: {summary.get('langsmith_project')}")
 
 
 if __name__ == "__main__":
