@@ -1,16 +1,25 @@
 import os
+import traceback
 from dotenv import load_dotenv
-load_dotenv()  # must run before any LangChain/LangGraph imports so LangSmith picks up the env vars
+load_dotenv()
 
+print("Starting app imports...")
 from functools import wraps
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
-from src.data_loader import load_all_documents
-from src.vectorstore import build_vectorstore, vectorstore_exists
-from src.search import ask as traditional_ask
-from src.agent import ask as single_agent_ask
-from src.multi_agent import ask as multi_agent_ask
-from src.react_agent import ask as react_ask
-from src.guardrails import validate_input, validate_output
+print("Flask imported")
+
+try:
+    from src.data_loader import load_all_documents
+    from src.vectorstore import build_vectorstore, vectorstore_exists
+    from src.search import ask as traditional_ask
+    from src.agent import ask as single_agent_ask
+    from src.multi_agent import ask as multi_agent_ask
+    from src.react_agent import ask as react_ask
+    from src.guardrails import validate_input, validate_output
+    print("All src imports successful")
+except Exception as e:
+    print(f"IMPORT ERROR: {e}")
+    traceback.print_exc()
 
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
