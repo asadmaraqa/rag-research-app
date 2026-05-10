@@ -6,11 +6,9 @@ langchain-core
 langchain-community
 langchain-text-splitters
 langchain-google-genai
-langchain-huggingface
 langgraph
 langsmith
 faiss-cpu
-sentence-transformers
 pypdf
 pymupdf
 duckduckgo-search
