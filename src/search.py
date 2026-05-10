@@ -9,7 +9,17 @@ _llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
 _chain = get_prompt("rag-search") | _llm
 
 
-def ask(query: str, top_k: int = 5) -> dict:
+def _format_history(history: list) -> str:
+    if not history:
+        return ""
+    lines = ["Conversation so far:"]
+    for msg in history:
+        role = "Human" if msg["role"] == "user" else "Assistant"
+        lines.append(f"{role}: {msg['content']}")
+    return "\n".join(lines) + "\n\n"
+
+
+def ask(query: str, chat_history: list = None, top_k: int = 5) -> dict:
     """Find the most relevant chunks for query and return answer + source metadata."""
     store = load_vectorstore()
     trace = []
@@ -26,7 +36,11 @@ def ask(query: str, top_k: int = 5) -> dict:
     if not context:
         return {"answer": "No relevant documents found.", "sources": [], "trace": trace}
 
-    answer = _chain.invoke({"context": context, "question": query}).content
+    answer = _chain.invoke({
+        "context": context,
+        "question": query,
+        "chat_history": _format_history(chat_history),
+    }).content
     trace.append({
         "node": "generate",
         "label": "Answer Generator",

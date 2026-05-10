@@ -290,6 +290,9 @@
   <header>
     <h1>RAG Chat</h1>
     <p>Upload documents and ask questions — powered by Gemini</p>
+    <button class="btn btn-primary" id="new-chat-btn" onclick="newChat()" style="margin-top:10px;font-size:0.82rem;padding:7px 16px;">
+      ✦ New Chat
+    </button>
   </header>
 
   <!-- Upload -->
@@ -559,6 +562,20 @@
 
     document.getElementById('send-btn').disabled = false;
     input.focus();
+  }
+
+  // ── New Chat ───────────────────────────────────────────────────────────────
+
+  async function newChat() {
+    await fetch('/clear', { method: 'POST' });
+    const box = document.getElementById('chat-box');
+    box.innerHTML = `
+      <div class="msg bot">
+        <div class="bubble">New conversation started. Upload a document and ask me anything!</div>
+      </div>`;
+    document.getElementById('trace-body').innerHTML =
+      '<div class="trace-empty">Send a message to watch the pipeline run step by step</div>';
+    document.getElementById('trace-mode-badge').textContent = MODE_INFO[currentMode].label;
   }
 
   // Init badge

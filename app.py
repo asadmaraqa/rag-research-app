@@ -94,7 +94,7 @@ def chat():
 
     data = request.get_json() or {}
     query = data.get("query", "").strip()
-    mode  = data.get("mode", "traditional")  # "traditional", "single", or "multi"
+    mode  = data.get("mode", "traditional")  # "traditional", "single", "multi", or "react"
     if not query:
         return jsonify({"error": "Empty query."})
 
@@ -104,16 +104,19 @@ def chat():
         print(f"[GUARDRAIL] Input blocked: {reason}")
         return jsonify({"error": f"Query blocked by safety guardrail: {reason}", "sources": []}), 400
 
+    # Load conversation history for this session (last 20 turns = 10 exchanges)
+    history = session.get("chat_history", [])
+
     try:
-        # Route to the chosen pipeline based on the mode sent from the UI
+        # Route to the chosen pipeline, passing history each time
         if mode == "multi":
-            result = multi_agent_ask(query)
+            result = multi_agent_ask(query, chat_history=history)
         elif mode == "single":
-            result = single_agent_ask(query)
+            result = single_agent_ask(query, chat_history=history)
         elif mode == "react":
-            result = react_ask(query)
+            result = react_ask(query, chat_history=history)
         else:
-            result = traditional_ask(query)
+            result = traditional_ask(query, chat_history=history)
 
         # ── Output guardrail ──────────────────────────────────────────────────
         answer  = result.get("answer", "")
@@ -125,12 +128,26 @@ def chat():
             print(f"[GUARDRAIL] Output flagged: {issue}")
             result["guardrail_warning"] = issue
 
+        # Persist this exchange to the session (keep last 20 messages = 10 turns)
+        history.append({"role": "user", "content": query})
+        history.append({"role": "assistant", "content": answer})
+        session["chat_history"] = history[-20:]
+        session.modified = True
+
         return jsonify({**result, "mode": mode})
 
     except Exception as e:
-        # Catch any pipeline error and return it as a readable message
         print(f"[ERROR] Pipeline failed: {e}")
         return jsonify({"error": f"Pipeline error: {str(e)}", "sources": []}), 500
+
+
+@app.route("/clear", methods=["POST"])
+@login_required
+def clear_history():
+    """Clear the conversation history for the current session."""
+    session.pop("chat_history", None)
+    session.modified = True
+    return jsonify({"message": "Conversation history cleared."})
 
 
 if __name__ == "__main__":

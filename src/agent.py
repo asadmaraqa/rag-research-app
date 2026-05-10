@@ -34,6 +34,7 @@ llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
 
 class AgentState(TypedDict):
     question: str                  # original user question
+    chat_history: str              # formatted prior conversation turns
     rewritten_query: str           # improved version for better retrieval
     retrieved_docs: List[Document] # chunks returned from FAISS
     relevant_docs: List[Document]  # chunks confirmed relevant by grader
@@ -50,7 +51,7 @@ _rewriter_chain = get_prompt("rag-query-rewriter") | llm
 
 def rewrite_query(state: AgentState) -> AgentState:
     """Turn the raw question into an optimised retrieval query."""
-    response = _rewriter_chain.invoke({"question": state["question"]})
+    response = _rewriter_chain.invoke({"question": state["question"], "chat_history": state["chat_history"]})
     rewritten_query = response.content.strip()
     entry = {
         "node": "rewrite_query",
@@ -134,7 +135,8 @@ def generate_answer(state: AgentState) -> AgentState:
 
     answer = _answer_chain.invoke({
         "context": context,
-        "question": state["question"]
+        "question": state["question"],
+        "chat_history": state["chat_history"],
     }).content
 
     # Extract unique source metadata from the chunks used
@@ -163,7 +165,7 @@ _general_chain = get_prompt("rag-general-fallback") | llm
 
 def answer_from_general_knowledge(state: AgentState) -> AgentState:
     """Answer the question using the LLM's general knowledge (no documents)."""
-    answer = _general_chain.invoke({"question": state["question"]}).content
+    answer = _general_chain.invoke({"question": state["question"], "chat_history": state["chat_history"]}).content
     entry = {
         "node": "answer_from_general_knowledge",
         "label": "General Knowledge Fallback",
@@ -219,13 +221,24 @@ agent = build_agent()
 
 # ── Public Interface ──────────────────────────────────────────────────────────
 
-def ask(question: str) -> dict:
+def _format_history(history: list) -> str:
+    if not history:
+        return ""
+    lines = ["Conversation so far:"]
+    for msg in history:
+        role = "Human" if msg["role"] == "user" else "Assistant"
+        lines.append(f"{role}: {msg['content']}")
+    return "\n".join(lines) + "\n\n"
+
+
+def ask(question: str, chat_history: list = None) -> dict:
     """
     Run the agentic RAG pipeline for a question.
     Returns a dict with 'answer' and 'sources'.
     """
     initial_state: AgentState = {
         "question":        question,
+        "chat_history":    _format_history(chat_history),
         "rewritten_query": "",
         "retrieved_docs":  [],
         "relevant_docs":   [],

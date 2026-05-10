@@ -78,7 +78,7 @@ react_agent = create_react_agent(llm, [search_documents, web_search])
 
 # ── Public interface ──────────────────────────────────────────────────────────
 
-def ask(question: str) -> dict:
+def ask(question: str, chat_history: list = None) -> dict:
     """
     Run the ReAct agent and return answer, sources, and a step-by-step trace.
 
@@ -92,9 +92,16 @@ def ask(question: str) -> dict:
     final_answer: str  = ""
     web_was_used: bool = False
 
+    # Build messages list: prepend history so the model has full context
+    messages = []
+    for msg in (chat_history or []):
+        role = "human" if msg["role"] == "user" else "ai"
+        messages.append((role, msg["content"]))
+    messages.append(("human", question))
+
     try:
         for event in react_agent.stream(
-            {"messages": [("human", question)]},
+            {"messages": messages},
             stream_mode="updates",
         ):
             for _node, output in event.items():

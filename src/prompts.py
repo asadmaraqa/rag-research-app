@@ -15,11 +15,14 @@ PROMPT_TEMPLATES: dict[str, str] = {
         "You are a helpful assistant. If the context below is relevant to the question, "
         "use it to answer. If not, answer from your general knowledge. "
         "For greetings, respond naturally.\n\n"
+        "{chat_history}"
         "Context:\n{context}\n\nQuestion: {question}"
     ),
     "rag-query-rewriter": (
         "Rewrite the question below into a concise, keyword-rich search query "
-        "that will retrieve the most relevant document chunks.\n\n"
+        "that will retrieve the most relevant document chunks. "
+        "Use the conversation history to resolve references like 'that', 'it', 'them'.\n\n"
+        "{chat_history}"
         "Question: {question}\n\nSearch query:"
     ),
     "rag-document-grader": (
@@ -31,10 +34,13 @@ PROMPT_TEMPLATES: dict[str, str] = {
     ),
     "rag-answer-generator": (
         "You are a helpful assistant. Answer the question using the context below.\n\n"
+        "{chat_history}"
         "Context:\n{context}\n\nQuestion: {question}"
     ),
     "rag-general-fallback": (
-        "You are a helpful assistant. Answer the question below.\n\nQuestion: {question}"
+        "You are a helpful assistant. Answer the question below.\n\n"
+        "{chat_history}"
+        "Question: {question}"
     ),
     "multi-agent-web-decision": (
         "Does the question below require up-to-date information from the web "
@@ -44,6 +50,7 @@ PROMPT_TEMPLATES: dict[str, str] = {
     "multi-agent-synthesizer": (
         "You are a helpful assistant. Synthesize the information below into a single, "
         "clear, and complete answer to the question.\n\n"
+        "{chat_history}"
         "Question: {question}\n\n"
         "Answer from uploaded documents:\n{rag_answer}\n\n"
         "Answer from web search:\n{web_answer}\n\n"

@@ -46,6 +46,8 @@ web_search_tool = DuckDuckGoSearchRun()
 
 class OrchestratorState(TypedDict):
     question: str          # original user question
+    chat_history: str      # formatted history for synthesizer prompt
+    chat_history_raw: list # raw history list passed to inner RAG pipeline
     use_rag: bool          # orchestrator decided: call the RAG agent?
     use_web: bool          # orchestrator decided: call the Web agent?
     rag_answer: str        # answer returned by the RAG agent
@@ -131,7 +133,7 @@ def run_rag_agent(state: OrchestratorState) -> OrchestratorState:
         }
         return {**state, "rag_answer": "", "rag_sources": [], "trace": [*state.get("trace", []), entry]}
 
-    result = rag_ask(state["question"])
+    result = rag_ask(state["question"], chat_history=state.get("chat_history_raw"))
     # Merge the inner RAG pipeline's trace steps into our trace
     inner_trace = [{"node": f"rag__{s['node']}", "label": f"  ↳ {s['label']}", "detail": s["detail"], "icon": s["icon"]}
                    for s in result.get("trace", [])]
@@ -183,9 +185,10 @@ _synthesizer_chain = get_prompt("multi-agent-synthesizer") | llm
 def synthesize(state: OrchestratorState) -> OrchestratorState:
     """Combine RAG and web results into one final answer."""
     final_answer = _synthesizer_chain.invoke({
-        "question":   state["question"],
-        "rag_answer": state["rag_answer"] or "No document results.",
-        "web_answer": state["web_answer"] or "No web results.",
+        "question":    state["question"],
+        "chat_history": state.get("chat_history", ""),
+        "rag_answer":  state["rag_answer"] or "No document results.",
+        "web_answer":  state["web_answer"] or "No web results.",
     }).content
 
     # Build sources: document sources + web source (if web was actually used)
@@ -249,21 +252,33 @@ multi_agent = build_multi_agent()
 
 # ── Public Interface ──────────────────────────────────────────────────────────
 
-def ask(question: str) -> dict:
+def _format_history(history: list) -> str:
+    if not history:
+        return ""
+    lines = ["Conversation so far:"]
+    for msg in history:
+        role = "Human" if msg["role"] == "user" else "Assistant"
+        lines.append(f"{role}: {msg['content']}")
+    return "\n".join(lines) + "\n\n"
+
+
+def ask(question: str, chat_history: list = None) -> dict:
     """
     Run the multi-agent pipeline for a question.
     Returns a dict with 'answer' and 'sources'.
     """
     initial_state: OrchestratorState = {
-        "question":     question,
-        "use_rag":      False,
-        "use_web":      False,
-        "rag_answer":   "",
-        "rag_sources":  [],
-        "web_answer":   "",
-        "final_answer": "",
-        "sources":      [],
-        "trace":        [],
+        "question":         question,
+        "chat_history":     _format_history(chat_history),
+        "chat_history_raw": chat_history or [],
+        "use_rag":          False,
+        "use_web":          False,
+        "rag_answer":       "",
+        "rag_sources":      [],
+        "web_answer":       "",
+        "final_answer":     "",
+        "sources":          [],
+        "trace":            [],
     }
 
     final_state = multi_agent.invoke(initial_state)
