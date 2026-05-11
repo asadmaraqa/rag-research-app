@@ -62,35 +62,27 @@ class OrchestratorState(TypedDict):
 # Reads the question and decides which agents to call.
 # It can call RAG only, Web only, or both.
 
-_rag_chain = get_prompt("multi-agent-rag-decision") | llm
 _web_chain = get_prompt("multi-agent-web-decision") | llm
 
 
 def orchestrate(state: OrchestratorState) -> OrchestratorState:
     """
-    Ask the LLM whether the question needs documents, web, or both.
-    RAG is only enabled when a vector store exists AND the question is
-    likely about document content.
+    Enable RAG whenever a vector store exists, then ask the LLM whether
+    live web results are also needed. If RAG runs but finds nothing relevant,
+    run_rag_agent will flip use_web=True as a fallback.
     """
     question = state["question"]
     trace    = list(state.get("trace", []))
 
-    has_vectorstore = vectorstore_exists()
+    use_rag = vectorstore_exists()
     trace.append({
         "node":   "orchestrate_rag_probe",
         "label":  "DB Probe",
-        "detail": "Vector store found" if has_vectorstore else "No vector store found — RAG unavailable",
+        "detail": "Vector store found — RAG enabled" if use_rag else "No vector store found — RAG skipped",
         "icon":   "🗄️",
     })
 
-    # Ask LLM whether the question is about uploaded document content
-    if has_vectorstore:
-        rag_response = _rag_chain.invoke({"question": question}).content.strip().lower()
-        use_rag = rag_response.startswith("yes")
-    else:
-        use_rag = False
-
-    # Ask LLM whether live web results are needed
+    # LLM decides if web is also needed
     web_response = _web_chain.invoke({"question": question}).content.strip().lower()
     use_web      = web_response.startswith("yes")
 
@@ -130,16 +122,27 @@ def run_rag_agent(state: OrchestratorState) -> OrchestratorState:
     # Merge the inner RAG pipeline's trace steps into our trace
     inner_trace = [{"node": f"rag__{s['node']}", "label": f"  ↳ {s['label']}", "detail": s["detail"], "icon": s["icon"]}
                    for s in result.get("trace", [])]
+
+    found_chunks = bool(result.get("sources"))
+    # If RAG found no relevant chunks the question is not about the documents —
+    # enable web so the web agent picks it up instead.
+    use_web = state.get("use_web") or not found_chunks
+
     entry = {
         "node": "run_rag_agent",
         "label": "RAG Agent",
-        "detail": f"Searched documents — {'answer found' if result['answer'] else 'no answer'}",
-        "icon": "📄",
+        "detail": (
+            f"Found {len(result['sources'])} relevant chunk(s) in documents"
+            if found_chunks else
+            "No relevant chunks found — falling back to web"
+        ),
+        "icon": "📄" if found_chunks else "⚠️",
     }
     return {
         **state,
-        "rag_answer":  result["answer"],
+        "rag_answer":  result["answer"] if found_chunks else "",
         "rag_sources": result["sources"],
+        "use_web":     use_web,
         "trace": [*state.get("trace", []), entry, *inner_trace],
     }
 

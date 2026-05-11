@@ -42,12 +42,6 @@ PROMPT_TEMPLATES: dict[str, str] = {
         "{chat_history}"
         "Question: {question}"
     ),
-    "multi-agent-rag-decision": (
-        "You are a routing agent. The user has uploaded research documents into a vector store. "
-        "Does the question below ask about something that is likely to be found in uploaded documents "
-        "(e.g. specific research content, details from files, document-specific topics)? "
-        "Answer only 'yes' or 'no'.\n\nQuestion: {question}"
-    ),
     "multi-agent-web-decision": (
         "Does the question below require up-to-date information from the web "
         "(e.g. recent news, current prices, live data)? "
