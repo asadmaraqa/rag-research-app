@@ -139,14 +139,11 @@ def generate_answer(state: AgentState) -> AgentState:
         "chat_history": state["chat_history"],
     }).content
 
-    # Extract unique source metadata from the chunks used
-    seen_sources = set()
-    sources = []
-    for document in state["relevant_docs"]:
-        source_key = str(document.metadata)
-        if source_key not in seen_sources:
-            seen_sources.add(source_key)
-            sources.append(document.metadata)
+    # Build one source entry per relevant chunk, including a content snippet
+    sources = [
+        {**document.metadata, "snippet": document.page_content[:200]}
+        for document in state["relevant_docs"]
+    ]
 
     entry = {
         "node": "generate_answer",

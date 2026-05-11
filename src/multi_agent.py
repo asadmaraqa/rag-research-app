@@ -62,32 +62,39 @@ class OrchestratorState(TypedDict):
 # Reads the question and decides which agents to call.
 # It can call RAG only, Web only, or both.
 
+_rag_chain = get_prompt("multi-agent-rag-decision") | llm
 _web_chain = get_prompt("multi-agent-web-decision") | llm
 
 
 def orchestrate(state: OrchestratorState) -> OrchestratorState:
     """
-    Enable RAG whenever a vector store exists, then ask the LLM whether
-    live web results are also needed.
+    Ask the LLM whether the question needs documents, web, or both.
+    RAG is only enabled when a vector store exists AND the question is
+    likely about document content.
     """
     question = state["question"]
     trace    = list(state.get("trace", []))
 
-    # ── Step 1: RAG is used whenever documents have been uploaded ─────────────
-    use_rag = vectorstore_exists()
-
+    has_vectorstore = vectorstore_exists()
     trace.append({
         "node":   "orchestrate_rag_probe",
         "label":  "DB Probe",
-        "detail": "Vector store found — RAG enabled" if use_rag else "No vector store found — RAG skipped",
+        "detail": "Vector store found" if has_vectorstore else "No vector store found — RAG unavailable",
         "icon":   "🗄️",
     })
 
-    # ── Step 2: LLM decides if web is also needed ─────────────────────────────
+    # Ask LLM whether the question is about uploaded document content
+    if has_vectorstore:
+        rag_response = _rag_chain.invoke({"question": question}).content.strip().lower()
+        use_rag = rag_response.startswith("yes")
+    else:
+        use_rag = False
+
+    # Ask LLM whether live web results are needed
     web_response = _web_chain.invoke({"question": question}).content.strip().lower()
     use_web      = web_response.startswith("yes")
 
-    # Fallback: if neither fired, use whatever is available
+    # Fallback: if neither fired, use web
     if not use_rag and not use_web:
         use_web = True
 

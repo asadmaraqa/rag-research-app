@@ -121,11 +121,17 @@
   .sources-list.open { display: flex; flex-direction: column; gap: 4px; }
   .source-item {
     background: #f8fafc; border: 1px solid #e2e8f0;
-    border-radius: 6px; padding: 5px 10px;
+    border-radius: 6px; padding: 6px 10px;
     font-size: 0.75rem; color: #444;
-    display: flex; flex-wrap: wrap; gap: 8px;
+    display: flex; flex-direction: column; gap: 4px;
   }
   .source-item b { color: #111; }
+  .source-item .source-meta { display: flex; flex-wrap: wrap; gap: 8px; }
+  .source-item .source-snippet {
+    font-style: italic; color: #666;
+    border-left: 2px solid #cbd5e1; padding-left: 6px;
+    white-space: pre-wrap; word-break: break-word;
+  }
 
   /* Typing dots */
   .typing .bubble { display: flex; gap: 4px; align-items: center; padding: 12px 16px; }
@@ -453,11 +459,17 @@
       const list = document.createElement('div');
       list.className = 'sources-list';
       list.innerHTML = sources.map(s => {
-        const fields = Object.entries(s).map(([k, v]) => {
-          if (k === 'source') v = String(v).split('/').pop();
-          return `<span><b>${k}:</b> ${v}</span>`;
-        }).join('');
-        return `<div class="source-item">${fields}</div>`;
+        const snippet = s.snippet || '';
+        const metaFields = Object.entries(s)
+          .filter(([k]) => k !== 'snippet')
+          .map(([k, v]) => {
+            if (k === 'source') v = String(v).split('/').pop();
+            return `<span><b>${k}:</b> ${v}</span>`;
+          }).join('');
+        return `<div class="source-item">
+          <div class="source-meta">${metaFields}</div>
+          ${snippet ? `<div class="source-snippet">${snippet}</div>` : ''}
+        </div>`;
       }).join('');
 
       toggle.onclick = () => {
