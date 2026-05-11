@@ -41,9 +41,10 @@ def _clean_text(raw_text: str) -> str:
 
 
 def load_all_documents(data_dir: str):
-    """Load, clean, and return all supported documents from data_dir."""
+    """Load, clean, and return (docs, chunks_per_file) for all supported documents in data_dir."""
     data_directory = Path(data_dir).resolve()
     all_documents = []
+    chunks_per_file = {}  # filename → chunk count
 
     for glob_pattern, DocumentLoader in FILE_EXTENSION_TO_LOADER.items():
         for file_path in data_directory.glob(glob_pattern):
@@ -51,14 +52,14 @@ def load_all_documents(data_dir: str):
                 loaded_documents = DocumentLoader(str(file_path)).load()
                 for document in loaded_documents:
                     document.page_content = _clean_text(document.page_content)
-                # Drop chunks that are too short to be useful after cleaning
                 non_empty_documents = [
                     document for document in loaded_documents
                     if len(document.page_content) > MIN_CHUNK_LENGTH
                 ]
                 all_documents.extend(non_empty_documents)
+                chunks_per_file[file_path.name] = len(non_empty_documents)
             except Exception as load_error:
                 print(f"[WARN] Could not load {file_path}: {load_error}")
 
     print(f"[INFO] Loaded {len(all_documents)} document chunks after cleaning.")
-    return all_documents
+    return all_documents, chunks_per_file

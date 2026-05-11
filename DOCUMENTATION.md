@@ -217,7 +217,9 @@ grade_documents
 - `rewritten_query` — improved query for FAISS
 - `retrieved_docs` — raw chunks from FAISS
 - `relevant_docs` — chunks that passed grading
-- `answer`, `sources`, `trace`
+- `answer` — final answer text
+- `sources` — one entry per relevant chunk that passed grading; each entry contains the chunk's file/page metadata plus a `snippet` field (first 200 chars of the chunk text)
+- `trace` — step-by-step log
 
 **Best for:** Better retrieval quality than Traditional RAG, especially for vague or conversational questions. Slower due to two extra LLM calls (rewriter + grader).
 
@@ -234,8 +236,7 @@ START
   │
   ▼
 orchestrate
-  ┌─ Step 1: probe FAISS with the raw question.
-  │  If top relevance score ≥ 0.5 → use_rag = True
+  ┌─ Step 1: use_rag = True whenever a FAISS index exists.
   │
   └─ Step 2: ask Gemini "does this need live web data?"
      yes → use_web = True
@@ -246,6 +247,11 @@ orchestrate
   │                     Calls the full Agentic RAG
   │                     pipeline (src/agent.py) with
   │                     conversation history.
+  │
+  │                     If no relevant chunks are found:
+  │                       • rag_answer is cleared
+  │                       • use_web is flipped to True
+  │                         so the web agent covers the gap
   │                       │
   │                       ▼
   └── (always) ──────► run_web_agent
@@ -444,7 +450,7 @@ A single-page application built with plain HTML, CSS, and vanilla JavaScript —
 | `setMode(mode)` | Switches the active pipeline mode, updates the UI badge |
 | `uploadFiles()` | POSTs selected files to `/upload`, shows indexing status |
 | `sendQuery()` | POSTs the question to `/chat`, shows typing indicator, renders the response |
-| `appendMsg(text, role, sources)` | Adds a chat bubble; if sources are present, adds a collapsible source list |
+| `appendMsg(text, role, sources)` | Adds a chat bubble; if sources are present, adds a collapsible source list where each item shows the file/page metadata and a 200-character snippet of the actual chunk text that was used |
 | `showTrace(steps, mode)` | Animates the pipeline trace steps in the sidebar with a staggered 260ms delay per step |
 | `newChat()` | POSTs to `/clear`, resets the chat box and trace sidebar |
 

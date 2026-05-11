@@ -10,7 +10,7 @@ Upload PDFs or text files, then ask questions. The app searches your documents a
 |---|---|
 | **Traditional** | Simple FAISS similarity search → generate answer |
 | **Single Agent** | Agentic RAG: rewrites query → retrieves → grades chunks → generates (falls back to LLM general knowledge if no relevant docs found) |
-| **Multi-Agent** | Orchestrator decides whether to use RAG, web search (DuckDuckGo), or both → synthesizer combines results |
+| **Multi-Agent** | RAG always runs first when documents are uploaded; if no relevant chunks are found the web agent (DuckDuckGo) picks up automatically. Orchestrator also enables web for questions that need live data. Synthesizer combines both results. |
 | **ReAct** | LLM drives its own Thought → Action → Observation loop, choosing tools freely until it has enough to answer |
 
 All modes include an input guardrail (blocks harmful/injection queries) and an output guardrail (flags hallucinations before the answer reaches the user).

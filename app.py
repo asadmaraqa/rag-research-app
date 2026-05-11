@@ -77,12 +77,13 @@ def upload():
         saved.append(f.filename)
 
     # Load all documents from the upload folder and index them
-    docs = load_all_documents(UPLOAD_DIR)
+    docs, chunks_per_file = load_all_documents(UPLOAD_DIR)
     if not docs:
         return jsonify({"message": "Files saved but no content could be extracted."})
 
     build_vectorstore(docs)
-    return jsonify({"message": f"Indexed {len(docs)} chunks from: {', '.join(saved)}"})
+    breakdown = ", ".join(f"{name} ({chunks_per_file.get(name, 0)} chunks)" for name in chunks_per_file)
+    return jsonify({"message": f"Indexed {len(docs)} chunks total — {breakdown}"})
 
 
 @app.route("/chat", methods=["POST"])
