@@ -26,7 +26,7 @@ from langchain_community.tools import DuckDuckGoSearchRun
 from langgraph.graph import StateGraph, END
 
 from src.agent import ask as rag_ask
-from src.vectorstore import vectorstore_exists, load_vectorstore
+from src.vectorstore import vectorstore_exists
 from src.prompts import get_prompt
 
 load_dotenv()
@@ -64,37 +64,23 @@ class OrchestratorState(TypedDict):
 
 _web_chain = get_prompt("multi-agent-web-decision") | llm
 
-# Minimum relevance score (0–1) for a vector DB chunk to count as a match.
-# all-MiniLM-L6-v2 with FAISS: scores above 0.5 are genuinely on-topic.
-_RAG_THRESHOLD = 0.5
 
 def orchestrate(state: OrchestratorState) -> OrchestratorState:
     """
-    Probe the vector store first to decide if RAG is worth calling,
-    then ask the LLM only whether live web results are also needed.
+    Enable RAG whenever a vector store exists, then ask the LLM whether
+    live web results are also needed.
     """
     question = state["question"]
     trace    = list(state.get("trace", []))
 
-    # ── Step 1: vector DB probe ───────────────────────────────────────────────
-    use_rag   = False
-    top_score = 0.0
-    if vectorstore_exists():
-        store   = load_vectorstore()
-        results = store.similarity_search_with_relevance_scores(question, k=3)
-        if results:
-            top_score = max(score for _, score in results)
-            use_rag   = top_score >= _RAG_THRESHOLD
+    # ── Step 1: RAG is used whenever documents have been uploaded ─────────────
+    use_rag = vectorstore_exists()
 
     trace.append({
         "node":   "orchestrate_rag_probe",
         "label":  "DB Probe",
-        "detail": (
-            f"Top relevance score: {top_score:.2f} "
-            f"({'✔ above' if use_rag else '✘ below'} threshold {_RAG_THRESHOLD}) "
-            f"→ RAG {'enabled' if use_rag else 'skipped'}"
-        ) if vectorstore_exists() else "No vector store found — RAG skipped",
-        "icon": "🗄️",
+        "detail": "Vector store found — RAG enabled" if use_rag else "No vector store found — RAG skipped",
+        "icon":   "🗄️",
     })
 
     # ── Step 2: LLM decides if web is also needed ─────────────────────────────
